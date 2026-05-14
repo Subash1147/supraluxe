@@ -12,9 +12,19 @@ const { isMongoConnected } = require('./mongo')
 function createApp() {
   const app = express()
 
+  const allowedOrigins = [
+    'https://done-one-chi.vercel.app',
+    'https://done-git-main-subash-m-s-projects.vercel.app',
+    'https://done-d6dgf3on0-subash-m-s-projects.vercel.app',
+  ]
+
+  if (process.env.NODE_ENV !== 'production' && process.env.CORS_ORIGIN) {
+    allowedOrigins.push(process.env.CORS_ORIGIN)
+  }
+
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || true,
+      origin: allowedOrigins,
       credentials: true,
     }),
   )
