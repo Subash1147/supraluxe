@@ -10,7 +10,6 @@ Your frontend is ready for Vercel deployment. The following has been configured:
    - Build command: `npm run build`
    - Output directory: `dist/`
    - Configured for SPA (Single Page Application) routing
-   - Environment variables support
 
 2. **`.env.example`** - Environment variables template
    - `VITE_API_URL` - Your backend API URL
