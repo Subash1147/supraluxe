@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { apiFetch } from '../../utils/api'
 
 export function OrderConfirmationPage() {
   const { orderId } = useParams()
@@ -13,11 +14,7 @@ export function OrderConfirmationPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/orders/${orderId}`)
-      if (!response.ok) {
-        throw new Error('Order not found')
-      }
-      const orderData = await response.json()
+      const orderData = await apiFetch(`/api/orders/${orderId}`)
       setOrder(orderData)
     } catch (error) {
       console.error('Error fetching order:', error)

@@ -1,10 +1,5 @@
-// Get the API base URL from environment or use relative path
-function getApiUrl() {
-  const apiUrl = import.meta.env.VITE_API_URL
-  return apiUrl || '/api'
-}
-
-export const API_BASE_URL = getApiUrl()
+// Get the API base URL from environment or use production URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://supraluxe.onrender.com";
 
 export async function apiCall(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
