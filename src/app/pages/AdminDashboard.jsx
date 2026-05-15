@@ -19,6 +19,7 @@ export function AdminDashboard() {
   const [toast, setToast] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     brand: '',
@@ -63,6 +64,14 @@ export function AdminDashboard() {
     fetchData()
   }, [user])
 
+  const validateImageUrl = (value) => {
+    if (!value) return false
+    const trimmed = value.trim()
+    const standardPattern = /^https?:\/\/[\w.-]+(?:\/[\w\-.~:?#[\]@!$&'()*+,;=]*)*\.(?:jpg|jpeg|png|webp|gif|svg)(?:\?.*)?$/i
+    const cloudinaryPattern = /^https?:\/\/res\.cloudinary\.com\/[\w-]+\/.*$/i
+    return standardPattern.test(trimmed) || cloudinaryPattern.test(trimmed)
+  }
+
   const resetForm = () => {
     setShowForm(false)
     setEditingProduct(null)
@@ -89,16 +98,45 @@ export function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setSubmitting(true)
 
-    const images = formData.images.split(',').map((src) => src.trim()).filter(Boolean)
-    const tags = formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-    const sizes = formData.sizes.split(',').map((size) => size.trim()).filter(Boolean)
+    const images = formData.images
+      .split(/[,\n]+/)
+      .map((src) => src.trim())
+      .filter(Boolean)
+    const tags = formData.tags
+      .split(/[,\n]+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+    const sizes = formData.sizes
+      .split(/[,\n]+/)
+      .map((size) => size.trim())
+      .filter(Boolean)
 
-    if (!formData.title.trim()) return setError('Title is required.')
-    if (!formData.brand.trim()) return setError('Brand is required.')
-    if (!formData.price.trim() || Number.isNaN(Number(formData.price))) return setError('Valid price is required.')
-    if (!formData.gender) return setError('Product gender must be selected.')
-    if (!images.length) return setError('At least one image URL is required.')
+    if (!formData.title.trim()) {
+      setSubmitting(false)
+      return setError('Title is required.')
+    }
+    if (!formData.brand.trim()) {
+      setSubmitting(false)
+      return setError('Brand is required.')
+    }
+    if (!formData.price.trim() || Number.isNaN(Number(formData.price))) {
+      setSubmitting(false)
+      return setError('Valid price is required.')
+    }
+    if (!formData.gender) {
+      setSubmitting(false)
+      return setError('Product gender must be selected.')
+    }
+    if (!images.length) {
+      setSubmitting(false)
+      return setError('At least one image URL is required.')
+    }
+    if (!images.every(validateImageUrl)) {
+      setSubmitting(false)
+      return setError('One or more image URLs are invalid. Use full http(s) URLs or Cloudinary links.')
+    }
 
     try {
       const payload = {
@@ -115,11 +153,28 @@ export function AdminDashboard() {
         images,
       }
 
-      if (editingProduct) {
-        await apiPut(`/api/products/${editingProduct._id}`, payload)
-      } else {
-        await apiPost('/api/products', payload)
+      const productId = editingProduct?.id || editingProduct?._id
+      console.log('Admin submit payload:', {
+        productId,
+        editingProduct,
+        payload,
+      })
+
+      if (editingProduct && !productId) {
+        setSubmitting(false)
+        setError('Unable to determine the product ID for update.')
+        console.error('Missing product ID for update', editingProduct)
+        return
       }
+
+      let result
+      if (editingProduct) {
+        result = await apiPut(`/api/products/${productId}`, payload)
+      } else {
+        result = await apiPost('/api/products', payload)
+      }
+
+      console.log('Admin submit response:', result)
 
       await fetchData()
       broadcastProductsUpdated()
@@ -129,6 +184,8 @@ export function AdminDashboard() {
       console.error('Admin product submit error:', err)
       setError(err.message || 'Could not save product.')
       showToast('error', err.message || 'Could not save product.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -429,9 +486,10 @@ export function AdminDashboard() {
                     <div className="md:col-span-2 flex flex-wrap gap-3">
                       <button
                         type="submit"
-                        className="inline-flex items-center justify-center rounded-3xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        disabled={submitting}
+                        className="inline-flex items-center justify-center rounded-3xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {editingProduct ? 'Update product' : 'Create product'}
+                        {submitting ? (editingProduct ? 'Updating…' : 'Creating…') : editingProduct ? 'Update product' : 'Create product'}
                       </button>
                       <button
                         type="button"

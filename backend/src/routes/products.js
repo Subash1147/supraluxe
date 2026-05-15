@@ -67,7 +67,11 @@ productsRouter.get('/:id', async (req, res, next) => {
 productsRouter.post('/', async (req, res, next) => {
   try {
     const created = await Product.create(req.body)
-    res.status(201).json(created)
+    return res.status(201).json({
+      success: true,
+      message: 'Product created successfully',
+      product: created,
+    })
   } catch (err) {
     next(err)
   }
@@ -76,13 +80,28 @@ productsRouter.post('/', async (req, res, next) => {
 // PUT /api/products/:id
 productsRouter.put('/:id', async (req, res, next) => {
   try {
+    console.log('PUT /api/products/%s request body:', req.params.id, req.body)
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     })
-    if (!updated) return res.status(404).json({ error: { message: 'Product not found' } })
-    res.json(updated)
+
+    if (!updated) {
+      console.warn('Product update failed: not found', req.params.id)
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      })
+    }
+
+    console.log('Product update succeeded:', updated._id)
+    return res.status(200).json({
+      success: true,
+      message: 'Product updated successfully',
+      product: updated,
+    })
   } catch (err) {
+    console.error('Product update error:', err)
     next(err)
   }
 })
@@ -91,8 +110,18 @@ productsRouter.put('/:id', async (req, res, next) => {
 productsRouter.delete('/:id', async (req, res, next) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id)
-    if (!deleted) return res.status(404).json({ error: { message: 'Product not found' } })
-    res.status(204).send()
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product deleted successfully',
+      productId: deleted._id,
+    })
   } catch (err) {
     next(err)
   }
