@@ -1,7 +1,80 @@
 const express = require('express')
+const multer = require('multer')
 const { Product } = require('../models/Product')
+const {
+  productImageStorage,
+  buildOptimizedCloudinaryUrl,
+} = require('../server/cloudinary')
+
+const upload = multer({
+  storage: productImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+})
 
 const productsRouter = express.Router()
+
+function parseArrayField(field) {
+  if (Array.isArray(field)) return field.filter(Boolean)
+  if (typeof field !== 'string') return field ? [field] : []
+
+  const trimmed = field.trim()
+  if (!trimmed) return []
+
+  if (/^[\[{]/.test(trimmed)) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [String(parsed)]
+    } catch (_err) {
+      // fall through and parse as comma-separated list
+    }
+  }
+
+  return trimmed.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function parseNumber(value) {
+  if (value === undefined || value === null || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function buildProductPayload(body, files) {
+  const payload = {
+    gender: body.gender,
+    brand: body.brand,
+    title: body.title,
+    category: body.category,
+    color: body.color,
+    description: body.description,
+  }
+
+  const price = parseNumber(body.price)
+  if (price !== undefined) payload.price = price
+
+  const mrp = parseNumber(body.mrp)
+  if (mrp !== undefined) payload.mrp = mrp
+
+  const rating = parseNumber(body.rating)
+  if (rating !== undefined) payload.rating = rating
+
+  const tags = parseArrayField(body.tags)
+  if (tags.length) payload.tags = tags
+
+  const sizes = parseArrayField(body.sizes)
+  if (sizes.length) payload.sizes = sizes
+
+  const uploadedImages = Array.isArray(files) && files.length
+    ? files.map((file) => buildOptimizedCloudinaryUrl(file.path)).filter(Boolean)
+    : []
+
+  if (uploadedImages.length) {
+    payload.images = uploadedImages
+  } else if (body.images !== undefined) {
+    payload.images = parseArrayField(body.images)
+  }
+
+  return payload
+}
 
 // GET /api/products?gender=&q=&min=&max=&rating=&sort=
 productsRouter.get('/', async (req, res, next) => {
@@ -63,11 +136,13 @@ productsRouter.get('/:id', async (req, res, next) => {
   }
 })
 
-// POST /api/products (simple seed/create)
-productsRouter.post('/', async (req, res) => {
+// POST /api/products (create product with optional Cloudinary image upload)
+productsRouter.post('/', upload.array('images', 5), async (req, res) => {
   try {
-    console.log('POST /api/products request body:', req.body)
-    const created = await Product.create(req.body)
+    const productData = buildProductPayload(req.body, req.files)
+    console.log('POST /api/products request payload:', productData)
+
+    const created = await Product.create(productData)
     return res.status(201).json({
       success: true,
       message: 'Product created successfully',
@@ -82,11 +157,13 @@ productsRouter.post('/', async (req, res) => {
   }
 })
 
-// PUT /api/products/:id
-productsRouter.put('/:id', async (req, res) => {
+// PUT /api/products/:id (update product with optional Cloudinary image replacement)
+productsRouter.put('/:id', upload.array('images', 5), async (req, res) => {
   try {
-    console.log('PUT /api/products/%s request body:', req.params.id, req.body)
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = buildProductPayload(req.body, req.files)
+    console.log('PUT /api/products/%s request payload:', req.params.id, updateData)
+
+    const updated = await Product.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     })
