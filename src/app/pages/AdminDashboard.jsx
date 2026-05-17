@@ -19,7 +19,8 @@ export function AdminDashboard() {
   const [toast, setToast] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     brand: '',
@@ -75,7 +76,8 @@ export function AdminDashboard() {
   const resetForm = () => {
     setShowForm(false)
     setEditingProduct(null)
-    setSubmitting(false)
+    setCreating(false)
+    setUpdating(false)
     setFormData({
       title: '',
       brand: '',
@@ -91,6 +93,13 @@ export function AdminDashboard() {
     })
   }
 
+  const handleCancel = () => {
+    console.log('handleCancel called')
+    setCreating(false)
+    setUpdating(false)
+    resetForm()
+  }
+
   const showToast = (type, message) => {
     setToast({ type, message })
     window.setTimeout(() => setToast(null), 4000)
@@ -99,7 +108,15 @@ export function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    setSubmitting(true)
+
+    const isUpdating = !!editingProduct
+    if (isUpdating) {
+      console.log('Starting product update...')
+      setUpdating(true)
+    } else {
+      console.log('Starting product creation...')
+      setCreating(true)
+    }
 
     try {
       const images = String(formData.images || '')
@@ -159,6 +176,7 @@ export function AdminDashboard() {
         productId,
         editingProduct,
         payload,
+        isUpdating,
       })
 
       if (editingProduct && !productId) {
@@ -175,17 +193,27 @@ export function AdminDashboard() {
       broadcastProductsUpdated()
       resetForm()
       showToast('success', editingProduct ? 'Product updated successfully.' : 'Product added successfully.')
+      console.log(isUpdating ? 'Product updated' : 'Product created')
     } catch (err) {
       console.error('Admin product submit error:', err)
       setError(err.message || 'Could not save product.')
       showToast('error', err.message || 'Could not save product.')
+      console.error('Submit failed:', isUpdating ? 'update' : 'create', err.message)
     } finally {
-      setSubmitting(false)
+      if (isUpdating) {
+        console.log('Resetting updating state')
+        setUpdating(false)
+      } else {
+        console.log('Resetting creating state')
+        setCreating(false)
+      }
     }
   }
 
   const handleEdit = (product) => {
-    setSubmitting(false)
+    console.log('handleEdit called for product:', product?.id || product?._id)
+    setCreating(false)
+    setUpdating(false)
     setEditingProduct(product)
     setFormData({
       title: product.title || '',
@@ -482,14 +510,14 @@ export function AdminDashboard() {
                     <div className="md:col-span-2 flex flex-wrap gap-3">
                       <button
                         type="submit"
-                        disabled={submitting}
+                        disabled={creating || updating}
                         className="inline-flex items-center justify-center rounded-3xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {submitting ? (editingProduct ? 'Updating…' : 'Creating…') : editingProduct ? 'Update product' : 'Create product'}
+                        {creating ? 'Creating…' : updating ? 'Updating…' : editingProduct ? 'Update product' : 'Create product'}
                       </button>
                       <button
                         type="button"
-                        onClick={resetForm}
+                        onClick={handleCancel}
                         className="inline-flex items-center justify-center rounded-3xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
                       >
                         Cancel
