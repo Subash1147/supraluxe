@@ -1,7 +1,10 @@
-// Get the API base URL from environment or use production URL
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? 'http://localhost:5000' : '/api')
+// Get the API base URL from environment or use the Render backend URL
+let API_BASE_URL = import.meta.env.VITE_API_URL || 'https://supraluxe.onrender.com'
+
+// normalize: strip trailing slash to avoid "/api/api" when VITE_API_URL ends with /api
+if (typeof API_BASE_URL === 'string' && API_BASE_URL.endsWith('/')) {
+  API_BASE_URL = API_BASE_URL.replace(/\/+$/, '')
+}
 
 async function parseResponseBody(response) {
   const text = await response.text()

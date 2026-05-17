@@ -7,6 +7,7 @@ const { cartRouter } = require('../routes/cart')
 const { ordersRouter } = require('../routes/orders')
 const { paymentsRouter } = require('../routes/payments')
 const { adminRouter } = require('../routes/admin')
+const { authRouter } = require('../routes/auth')
 const { isMongoConnected } = require('./mongo')
 
 function createApp() {
@@ -22,27 +23,49 @@ function createApp() {
     allowedOrigins.add(process.env.CORS_ORIGIN)
   }
 
+  // Log incoming requests for easier debugging (method + path)
+  app.use((req, _res, next) => {
+    console.log('[req]', req.method, req.originalUrl, 'origin=', req.headers.origin || '-')
+    next()
+  })
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin) {
-          return callback(null, true)
+        if (!origin) return callback(null, true)
+
+        // allow localhost origins in development
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true)
+
+        const allowedFromEnv = process.env.CORS_ORIGIN || process.env.FRONTEND_ORIGIN
+        if (allowedFromEnv) {
+          try {
+            const u = new URL(allowedFromEnv)
+            if (u.origin === origin) return callback(null, true)
+          } catch (e) {
+            if (allowedFromEnv === origin) return callback(null, true)
+          }
         }
 
-        if (allowedOrigins.has(origin)) {
-          return callback(null, true)
-        }
+        // allow all Vercel generated frontends
+        if (/^https?:\/\/[^/]+\.vercel\.app$/.test(origin)) return callback(null, true)
 
-        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
-          return callback(null, true)
-        }
+        // allow frontend deployed on Render or other trusted origins
+        if (/^https?:\/\/[^/]+\.onrender\.com$/.test(origin)) return callback(null, true)
 
+        if (allowedOrigins.has(origin)) return callback(null, true)
+
+        console.warn('CORS denied for origin:', origin)
         return callback(new Error(`CORS policy denied access from ${origin}`))
       },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Access-Token'],
     }),
   )
-  app.use(express.json({ limit: '1mb' }))
+
+  // Ensure body parser is enabled for JSON payloads
+  app.use(express.json({ limit: '2mb' }))
 
   app.get('/', (_req, res) => {
     res.json({ message: 'API server is running. Use /health or /api/* endpoints.' })
@@ -70,6 +93,7 @@ function createApp() {
   })
 
   app.use('/api/products', productsRouter)
+  app.use('/api/auth', authRouter)
   app.use('/api/users', usersRouter)
   app.use('/api/cart', cartRouter)
   app.use('/api/orders', ordersRouter)
