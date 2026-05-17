@@ -75,6 +75,7 @@ export function AdminDashboard() {
   const resetForm = () => {
     setShowForm(false)
     setEditingProduct(null)
+    setSubmitting(false)
     setFormData({
       title: '',
       brand: '',
@@ -184,6 +185,7 @@ export function AdminDashboard() {
   }
 
   const handleEdit = (product) => {
+    setSubmitting(false)
     setEditingProduct(product)
     setFormData({
       title: product.title || '',
