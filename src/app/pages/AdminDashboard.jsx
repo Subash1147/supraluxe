@@ -121,7 +121,7 @@ export function AdminDashboard() {
       setSubmitting(false)
       return setError('Brand is required.')
     }
-    if (!formData.price.trim() || Number.isNaN(Number(formData.price))) {
+    if (!String(formData.price).trim() || Number.isNaN(Number(formData.price))) {
       setSubmitting(false)
       return setError('Valid price is required.')
     }
