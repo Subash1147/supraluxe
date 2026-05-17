@@ -100,7 +100,8 @@ export function AdminDashboard() {
     setError(null)
     setSubmitting(true)
 
-    const images = formData.images
+    try {
+      const images = formData.images
       .split(/[,\n]+/)
       .map((src) => src.trim())
       .filter(Boolean)
@@ -114,36 +115,32 @@ export function AdminDashboard() {
       .filter(Boolean)
 
     if (!formData.title.trim()) {
-      setSubmitting(false)
-      return setError('Title is required.')
+      throw new Error('Title is required.')
     }
     if (!formData.brand.trim()) {
-      setSubmitting(false)
-      return setError('Brand is required.')
+      throw new Error('Brand is required.')
     }
     if (!String(formData.price).trim() || Number.isNaN(Number(formData.price))) {
-      setSubmitting(false)
-      return setError('Valid price is required.')
+      throw new Error('Valid price is required.')
+    }
+    if (formData.mrp !== '' && Number.isNaN(Number(formData.mrp))) {
+      throw new Error('Valid MRP is required.')
     }
     if (!formData.gender) {
-      setSubmitting(false)
-      return setError('Product gender must be selected.')
+      throw new Error('Product gender must be selected.')
     }
     if (!images.length) {
-      setSubmitting(false)
-      return setError('At least one image URL is required.')
+      throw new Error('At least one image URL is required.')
     }
     if (!images.every(validateImageUrl)) {
-      setSubmitting(false)
-      return setError('One or more image URLs are invalid. Use full http(s) URLs or Cloudinary links.')
+      throw new Error('One or more image URLs are invalid. Use full http(s) URLs or Cloudinary links.')
     }
 
-    try {
       const payload = {
         title: formData.title.trim(),
         brand: formData.brand.trim(),
         price: Number(formData.price),
-        mrp: formData.mrp ? Number(formData.mrp) : undefined,
+        mrp: formData.mrp !== '' ? Number(formData.mrp) : undefined,
         category: formData.category.trim(),
         gender: formData.gender,
         color: formData.color.trim(),
@@ -161,10 +158,8 @@ export function AdminDashboard() {
       })
 
       if (editingProduct && !productId) {
-        setSubmitting(false)
-        setError('Unable to determine the product ID for update.')
         console.error('Missing product ID for update', editingProduct)
-        return
+        throw new Error('Unable to determine the product ID for update.')
       }
 
       let result
