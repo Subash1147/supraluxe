@@ -101,46 +101,49 @@ export function AdminDashboard() {
     setSubmitting(true)
 
     try {
-      const images = formData.images
-      .split(/[,\n]+/)
-      .map((src) => src.trim())
-      .filter(Boolean)
-    const tags = formData.tags
-      .split(/[,\n]+/)
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-    const sizes = formData.sizes
-      .split(/[,\n]+/)
-      .map((size) => size.trim())
-      .filter(Boolean)
+      const images = String(formData.images || '')
+        .split(/[\n,]+/)
+        .map((src) => src.trim())
+        .filter(Boolean)
+      const tags = String(formData.tags || '')
+        .split(/[\n,]+/)
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+      const sizes = String(formData.sizes || '')
+        .split(/[\n,]+/)
+        .map((size) => size.trim())
+        .filter(Boolean)
 
-    if (!formData.title.trim()) {
-      throw new Error('Title is required.')
-    }
-    if (!formData.brand.trim()) {
-      throw new Error('Brand is required.')
-    }
-    if (!String(formData.price).trim() || Number.isNaN(Number(formData.price))) {
-      throw new Error('Valid price is required.')
-    }
-    if (formData.mrp !== '' && Number.isNaN(Number(formData.mrp))) {
-      throw new Error('Valid MRP is required.')
-    }
-    if (!formData.gender) {
-      throw new Error('Product gender must be selected.')
-    }
-    if (!images.length) {
-      throw new Error('At least one image URL is required.')
-    }
-    if (!images.every(validateImageUrl)) {
-      throw new Error('One or more image URLs are invalid. Use full http(s) URLs or Cloudinary links.')
-    }
+      if (!formData.title.trim()) {
+        throw new Error('Title is required.')
+      }
+      if (!formData.brand.trim()) {
+        throw new Error('Brand is required.')
+      }
+      if (!String(formData.price).trim() || Number.isNaN(Number(formData.price))) {
+        throw new Error('Valid price is required.')
+      }
+      if (formData.mrp !== '' && Number.isNaN(Number(formData.mrp))) {
+        throw new Error('Valid MRP is required.')
+      }
+      if (!formData.gender) {
+        throw new Error('Product gender must be selected.')
+      }
+      if (!images.length) {
+        throw new Error('At least one image URL is required.')
+      }
+      if (!images.every(validateImageUrl)) {
+        throw new Error('One or more image URLs are invalid. Use full http(s) URLs or Cloudinary links.')
+      }
+
+      const priceValue = Number(String(formData.price).trim())
+      const mrpValue = formData.mrp !== '' ? Number(String(formData.mrp).trim()) : undefined
 
       const payload = {
         title: formData.title.trim(),
         brand: formData.brand.trim(),
-        price: Number(formData.price),
-        mrp: formData.mrp !== '' ? Number(formData.mrp) : undefined,
+        price: priceValue,
+        mrp: mrpValue,
         category: formData.category.trim(),
         gender: formData.gender,
         color: formData.color.trim(),
@@ -158,16 +161,12 @@ export function AdminDashboard() {
       })
 
       if (editingProduct && !productId) {
-        console.error('Missing product ID for update', editingProduct)
         throw new Error('Unable to determine the product ID for update.')
       }
 
-      let result
-      if (editingProduct) {
-        result = await apiPut(`/api/products/${productId}`, payload)
-      } else {
-        result = await apiPost('/api/products', payload)
-      }
+      const result = editingProduct
+        ? await apiPut(`/api/products/${productId}`, payload)
+        : await apiPost('/api/products', payload)
 
       console.log('Admin submit response:', result)
 
